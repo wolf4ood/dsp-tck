@@ -12,41 +12,33 @@
 #
 
 ---
-name: "Publish Snapshot Docker image"
+name: Trigger (finalize) Release
 
 on:
   workflow_dispatch:
-  workflow_call:
 
 jobs:
-  secrets-presence:
-    name: "Check for required credentials"
-    runs-on: ubuntu-latest
-    outputs:
-      HAS_DOCKER: ${{ steps.secret-presence.outputs.HAS_DOCKER }}
-    steps:
-      - name: Check whether secrets exist
-        id: secret-presence
-        run: |
-          [ ! -z "${{ secrets.DOCKER_HUB_TOKEN }}" ] &&
-          [ ! -z "${{ secrets.DOCKER_HUB_USER }}" ] && echo "HAS_DOCKER=true" >> $GITHUB_OUTPUT
-          exit 0
+  Release:
+    uses: eclipse-dataspacetck/tck-common/.github/workflows/tck-release.yml@main
+    permissions:
+      contents: write
+    secrets: inherit
 
-  create-docker-image:
+  Release-Docker:
     name: "Build and push images"
-    needs: [ secrets-presence ]
+    needs: [ Release ]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        if: |
-          needs.secrets-presence.outputs.HAS_DOCKER
-
+      - name: Read current version
+        run: |
+          echo "VERSION=$(grep "version=" gradle.properties | cut -d '=' -f 2)" >> $GITHUB_ENV
       - uses: eclipse-dataspacetck/tck-common/.github/actions/publish-docker-image@main
-        name: Publish DSP TCK Docker image
+        name: Publish DSP TCK Docker image (release)
         with:
           rootDir: "dsp/dsp-tck"
           imagename: "dsp-tck-runtime"
           namespace: "eclipsedataspacetck"
           docker_user: ${{ secrets.DOCKER_HUB_USER }}
           docker_token: ${{ secrets.DOCKER_HUB_TOKEN }}
-
+          docker_tag: $VERSION
