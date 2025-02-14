@@ -43,13 +43,19 @@ public interface SystemLauncher {
     /**
      * Returns a service of the given type or null. Some services may not be available until {@link #start(SystemConfiguration)} ()} is invoked.
      *
-     * @param type the type of service to inject.
+     * @param type          the type of service to inject.
      * @param configuration the configuration used to resolve the service
-     * @param resolver a resolver to resolve dependencies that may be required for the requested service
+     * @param resolver      a resolver to resolve dependencies that may be required for the requested service
      */
     @Nullable
     default <T> T getService(Class<T> type, ServiceConfiguration configuration, ServiceResolver resolver) {
         return null;
+    }
+
+    /**
+     * Performs an operation before test execution.
+     */
+    default void beforeExecution(ServiceConfiguration configuration, ServiceResolver resolver) {
     }
 
 }

@@ -16,6 +16,8 @@
 package org.eclipse.dataspacetck.core.system;
 
 import org.eclipse.dataspacetck.core.api.system.CallbackEndpoint;
+import org.eclipse.dataspacetck.core.api.system.HandlerResponse;
+import org.eclipse.dataspacetck.core.api.system.ProtocolHandler;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.extension.ExtensionContext;
 
@@ -28,6 +30,7 @@ import java.util.Optional;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
+import static java.util.Collections.emptyMap;
 import static java.util.Objects.requireNonNull;
 import static java.util.regex.Pattern.compile;
 
@@ -45,7 +48,7 @@ public class DefaultCallbackEndpoint implements CallbackEndpoint, BiFunction<Str
 
     private String address;
     private List<LifecycleListener> listeners = new ArrayList<>();
-    private Map<String, Function<InputStream, String>> handlers = new HashMap<>();
+    private Map<String, ProtocolHandler> handlers = new HashMap<>();
 
 
     @Override
@@ -60,16 +63,26 @@ public class DefaultCallbackEndpoint implements CallbackEndpoint, BiFunction<Str
     @Override
     public String apply(String path, InputStream message) {
         //noinspection OptionalGetWithoutIsPresent
-        return lookupHandler(stripTrailingSlash(path)).get().apply(message);
+        return lookupHandler(stripTrailingSlash(path)).get().apply(emptyMap(), message).result();
+    }
+
+    public HandlerResponse apply(String path, Map<String, List<String>> headers, InputStream message) {
+        //noinspection OptionalGetWithoutIsPresent
+        return lookupHandler(stripTrailingSlash(path)).get().apply(headers, message);
     }
 
     @Override
-    public void registerHandler(String path, Function<InputStream, String> handler) {
+    public void registerProtocolHandler(String path, ProtocolHandler handler) {
         if (!path.startsWith("/")) {
             path = "/" + path;
         }
         path = stripTrailingSlash(path);
         handlers.put(path, handler);
+    }
+
+    @Override
+    public void registerHandler(String path, Function<InputStream, String> handler) {
+        registerProtocolHandler(path, new DelegatingProtocolHandler(handler));
     }
 
     @Override
@@ -120,11 +133,24 @@ public class DefaultCallbackEndpoint implements CallbackEndpoint, BiFunction<Str
     /**
      * Matches the path based on the regular expression.
      */
-    private Optional<Function<InputStream, String>> lookupHandler(String expression) {
+    private Optional<ProtocolHandler> lookupHandler(String expression) {
         return handlers.entrySet()
                 .stream()
                 .filter(entry -> compile(entry.getKey()).matcher(expression).matches())
                 .map(Map.Entry::getValue)
                 .findFirst();
+    }
+
+    private static class DelegatingProtocolHandler implements ProtocolHandler {
+        private final Function<InputStream, String> handler;
+
+        DelegatingProtocolHandler(Function<InputStream, String> handler) {
+            this.handler = requireNonNull(handler);
+        }
+
+        @Override
+        public HandlerResponse apply(Map<String, List<String>> headers, InputStream body) {
+            return new HandlerResponse(200, handler.apply(body));
+        }
     }
 }

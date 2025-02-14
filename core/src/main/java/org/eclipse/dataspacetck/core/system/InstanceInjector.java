@@ -17,6 +17,7 @@ package org.eclipse.dataspacetck.core.system;
 
 import org.eclipse.dataspacetck.core.api.system.ConfigParam;
 import org.eclipse.dataspacetck.core.api.system.Inject;
+import org.eclipse.dataspacetck.core.spi.boot.Monitor;
 import org.eclipse.dataspacetck.core.spi.system.ServiceConfiguration;
 import org.eclipse.dataspacetck.core.spi.system.ServiceResolver;
 import org.jetbrains.annotations.NotNull;
@@ -26,6 +27,7 @@ import java.lang.reflect.Field;
 
 import static java.lang.String.format;
 import static java.util.Arrays.stream;
+import static java.util.Objects.requireNonNull;
 import static org.eclipse.dataspacetck.core.system.ConfigFunctions.propertyOrEnv;
 
 /**
@@ -34,10 +36,12 @@ import static org.eclipse.dataspacetck.core.system.ConfigFunctions.propertyOrEnv
 public class InstanceInjector {
     private ServiceResolver resolver;
     private ExtensionContext extensionContext;
+    private Monitor monitor;
 
-    public InstanceInjector(ServiceResolver resolver, ExtensionContext extensionContext) {
-        this.resolver = resolver;
-        this.extensionContext = extensionContext;
+    public InstanceInjector(ServiceResolver resolver, ExtensionContext extensionContext, Monitor monitor) {
+        this.resolver = requireNonNull(resolver);
+        this.extensionContext = requireNonNull(extensionContext);
+        this.monitor = requireNonNull(monitor);
     }
 
     public void inject(Object instance) {
@@ -100,6 +104,7 @@ public class InstanceInjector {
                 .tags(tags)
                 .scopeId(id)
                 .annotations(annotations)
+                .monitor(monitor)
                 .propertyDelegate(k -> extensionContext.getConfigurationParameter(k).orElse(propertyOrEnv(k, null)))
                 .build();
 
