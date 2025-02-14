@@ -30,7 +30,12 @@ public interface CallbackEndpoint {
     /**
      * Registers a response handler for the given callback path.
      */
-    void registerHandler(String path, Function<InputStream, String> consumer);
+    void registerHandler(String path, Function<InputStream, String> handler);
+
+    /**
+     * Registers a response handler for the given callback path.
+     */
+    void registerProtocolHandler(String path, ProtocolHandler handler);
 
     /**
      * Deregisters a response handler.

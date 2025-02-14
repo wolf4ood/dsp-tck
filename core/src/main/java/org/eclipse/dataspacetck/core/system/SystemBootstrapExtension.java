@@ -26,6 +26,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.extension.BeforeAllCallback;
 import org.junit.jupiter.api.extension.BeforeEachCallback;
+import org.junit.jupiter.api.extension.BeforeTestExecutionCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.ParameterContext;
 import org.junit.jupiter.api.extension.ParameterResolutionException;
@@ -50,7 +51,11 @@ import static org.eclipse.dataspacetck.core.system.ConsoleMonitor.ANSI_PROPERTY;
 import static org.eclipse.dataspacetck.core.system.ConsoleMonitor.DEBUG_PROPERTY;
 import static org.junit.jupiter.api.extension.ExtensionContext.Namespace.GLOBAL;
 
-public class SystemBootstrapExtension implements BeforeAllCallback, BeforeEachCallback, ParameterResolver, ExtensionContext.Store.CloseableResource {
+public class SystemBootstrapExtension implements BeforeAllCallback,
+        BeforeEachCallback,
+        BeforeTestExecutionCallback,
+        ParameterResolver,
+        ExtensionContext.Store.CloseableResource {
 
     private static final ExtensionContext.Namespace CALLBACK_NAMESPACE = org.junit.jupiter.api.extension.ExtensionContext.Namespace.create(new Object());
 
@@ -61,6 +66,7 @@ public class SystemBootstrapExtension implements BeforeAllCallback, BeforeEachCa
     private static SystemLauncher launcher;
     private static DispatchingHandler dispatchingHandler;
     private static HttpServer server;
+    private static ConsoleMonitor monitor;
     private ExecutorService executorService;
 
     @Override
@@ -80,15 +86,16 @@ public class SystemBootstrapExtension implements BeforeAllCallback, BeforeEachCa
         this.callbackHost = callbackAddress.getHost();
         this.callbackPort = callbackAddress.getPort();
 
+        monitor = new ConsoleMonitor(debug, ansi);
         var configuration = SystemConfiguration.Builder.newInstance()
                 .propertyDelegate(k -> context.getConfigurationParameter(k).orElse(propertyOrEnv(k, null)))
-                .monitor(new ConsoleMonitor(debug, ansi))
+                .monitor(monitor)
                 .build();
 
         launcher.start(configuration);
 
         dispatchingHandler = new DispatchingHandler();
-        executorService = Executors.newFixedThreadPool(1);
+        executorService = Executors.newFixedThreadPool(4);
         server = initializeCallbackServer(dispatchingHandler, executorService);
         server.start();
     }
@@ -96,7 +103,23 @@ public class SystemBootstrapExtension implements BeforeAllCallback, BeforeEachCa
     @Override
     public void beforeEach(ExtensionContext context) {
         new InstanceInjector((service, configuration) ->
-                launcher.getService(service, configuration, (t, c) -> resolveInHierarchy(t, c, context)), context).inject(context.getTestInstance().orElseThrow());
+                launcher.getService(service, configuration, (t, c) -> resolveInHierarchy(t, c, context)), context, monitor).inject(context.getTestInstance().orElseThrow());
+    }
+
+    @Override
+    public void beforeTestExecution(ExtensionContext context) {
+        context.getTestMethod().ifPresent(method -> {
+            var annotations = method.getDeclaredAnnotations();
+            var tags = context.getTags();
+            var id = context.getUniqueId();
+            var configuration = ServiceConfiguration.Builder.newInstance()
+                    .tags(tags)
+                    .scopeId(id)
+                    .annotations(annotations)
+                    .monitor(monitor)
+                    .build();
+            launcher.beforeExecution(configuration, (t, c) -> resolveInHierarchy(t, c, context));
+        });
     }
 
     @Override
@@ -217,12 +240,12 @@ public class SystemBootstrapExtension implements BeforeAllCallback, BeforeEachCa
             var path = exchange.getRequestURI().getPath();
             for (var endpoint : endpoints) {
                 if (endpoint.handlesPath(path)) {
-                    var response = endpoint.apply(path, exchange.getRequestBody());
-                    if (response == null) {
-                        exchange.sendResponseHeaders(200, 0);
+                    var response = endpoint.apply(path, exchange.getRequestHeaders(), exchange.getRequestBody());
+                    if (response.result() == null) {
+                        exchange.sendResponseHeaders(response.code(), 0);
                     } else {
-                        var bytes = response.getBytes();
-                        exchange.sendResponseHeaders(200, bytes.length);
+                        var bytes = response.result().getBytes();
+                        exchange.sendResponseHeaders(response.code(), bytes.length);
                         var responseBody = exchange.getResponseBody();
                         responseBody.write(bytes);
                         responseBody.close();
