@@ -15,7 +15,7 @@
 package org.eclipse.dataspacetck.core.api.pipeline;
 
 import org.awaitility.core.ConditionTimeoutException;
-import org.eclipse.dataspacetck.core.api.message.MessageSerializer;
+import org.eclipse.dataspacetck.core.api.message.MessageValidator;
 import org.eclipse.dataspacetck.core.api.system.CallbackEndpoint;
 import org.eclipse.dataspacetck.core.spi.boot.Monitor;
 
@@ -31,6 +31,7 @@ import java.util.function.Supplier;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.awaitility.Awaitility.await;
+import static org.eclipse.dataspacetck.core.api.message.MessageSerializer.processJsonLd;
 
 /**
  * Base pipeline functionality.
@@ -41,7 +42,7 @@ public abstract class AbstractAsyncPipeline<P extends AsyncPipeline<P>> implemen
     protected CallbackEndpoint endpoint;
     protected Monitor monitor;
     protected long waitTime;
-    protected Supplier<Map<String, Object>> context;
+    protected Supplier<List<String>> context;
 
     protected List<Runnable> stages = new ArrayList<>();
 
@@ -65,7 +66,7 @@ public abstract class AbstractAsyncPipeline<P extends AsyncPipeline<P>> implemen
      */
     protected Deque<CountDownLatch> expectLatches = new ArrayDeque<>();
 
-    public AbstractAsyncPipeline(CallbackEndpoint endpoint, Monitor monitor, long waitTime, Supplier<Map<String, Object>> context) {
+    public AbstractAsyncPipeline(CallbackEndpoint endpoint, Monitor monitor, long waitTime, Supplier<List<String>> context) {
         this.endpoint = endpoint;
         this.waitTime = waitTime;
         this.monitor = monitor;
@@ -106,18 +107,22 @@ public abstract class AbstractAsyncPipeline<P extends AsyncPipeline<P>> implemen
         stages.forEach(Runnable::run);
     }
 
-    protected P addHandlerAction(String path, Consumer<Map<String, Object>> action) {
+    protected P addHandlerAction(String path, MessageValidator validator, Consumer<Map<String, Object>> action) {
         var latch = new CountDownLatch(1);
         expectLatches.add(latch);
         stages.add(() ->
                 endpoint.registerHandler(path, agreement -> {
-                    action.accept((MessageSerializer.processJsonLd(agreement, context.get())));
+                    action.accept((processJsonLd(agreement, context.get(), validator)));
                     endpoint.deregisterHandler(path);
                     latch.countDown();
                     return null;
                 }));
         //noinspection unchecked
         return (P) this;
+    }
+
+    protected P addHandlerAction(String path, Consumer<Map<String, Object>> action) {
+        return addHandlerAction(path, null, action);
     }
 
     protected void pause() {

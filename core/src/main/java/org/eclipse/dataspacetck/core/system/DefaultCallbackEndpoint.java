@@ -18,6 +18,7 @@ package org.eclipse.dataspacetck.core.system;
 import org.eclipse.dataspacetck.core.api.system.CallbackEndpoint;
 import org.eclipse.dataspacetck.core.api.system.HandlerResponse;
 import org.eclipse.dataspacetck.core.api.system.ProtocolHandler;
+import org.eclipse.dataspacetck.core.spi.boot.Monitor;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.extension.ExtensionContext;
 
@@ -30,6 +31,7 @@ import java.util.Optional;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
+import static java.lang.String.format;
 import static java.util.Collections.emptyMap;
 import static java.util.Objects.requireNonNull;
 import static java.util.regex.Pattern.compile;
@@ -41,15 +43,13 @@ import static java.util.regex.Pattern.compile;
  */
 public class DefaultCallbackEndpoint implements CallbackEndpoint, BiFunction<String, InputStream, String>, ExtensionContext.Store.CloseableResource {
 
-    @FunctionalInterface
-    public interface LifecycleListener {
-        void onClose(DefaultCallbackEndpoint endpoint);
-    }
-
+    private final List<LifecycleListener> listeners = new ArrayList<>();
+    private final Map<String, ProtocolHandler> handlers = new HashMap<>();
     private String address;
-    private List<LifecycleListener> listeners = new ArrayList<>();
-    private Map<String, ProtocolHandler> handlers = new HashMap<>();
+    private Monitor monitor;
 
+    private DefaultCallbackEndpoint() {
+    }
 
     @Override
     public String getAddress() {
@@ -82,15 +82,12 @@ public class DefaultCallbackEndpoint implements CallbackEndpoint, BiFunction<Str
 
     @Override
     public void registerHandler(String path, Function<InputStream, String> handler) {
-        registerProtocolHandler(path, new DelegatingProtocolHandler(handler));
+        registerProtocolHandler(path, new DelegatingProtocolHandler(handler, monitor));
     }
 
     @Override
     public void deregisterHandler(String path) {
         handlers.remove(path);
-    }
-
-    private DefaultCallbackEndpoint() {
     }
 
     @Override
@@ -103,8 +100,28 @@ public class DefaultCallbackEndpoint implements CallbackEndpoint, BiFunction<Str
         return path.endsWith("/") ? path.substring(0, path.length() - 1) : path;
     }
 
+    /**
+     * Matches the path based on the regular expression.
+     */
+    private Optional<ProtocolHandler> lookupHandler(String expression) {
+        return handlers.entrySet()
+                .stream()
+                .filter(entry -> compile(entry.getKey()).matcher(expression).matches())
+                .map(Map.Entry::getValue)
+                .findFirst();
+    }
+
+    @FunctionalInterface
+    public interface LifecycleListener {
+        void onClose(DefaultCallbackEndpoint endpoint);
+    }
+
     public static class Builder {
-        private DefaultCallbackEndpoint endpoint;
+        private final DefaultCallbackEndpoint endpoint;
+
+        private Builder() {
+            endpoint = new DefaultCallbackEndpoint();
+        }
 
         public static Builder newInstance() {
             return new Builder();
@@ -120,37 +137,35 @@ public class DefaultCallbackEndpoint implements CallbackEndpoint, BiFunction<Str
             return this;
         }
 
+        public Builder monitor(Monitor monitor) {
+            endpoint.monitor = monitor;
+            return this;
+        }
+
         public DefaultCallbackEndpoint build() {
             requireNonNull(endpoint.address);
             return endpoint;
         }
 
-        private Builder() {
-            endpoint = new DefaultCallbackEndpoint();
-        }
-    }
-
-    /**
-     * Matches the path based on the regular expression.
-     */
-    private Optional<ProtocolHandler> lookupHandler(String expression) {
-        return handlers.entrySet()
-                .stream()
-                .filter(entry -> compile(entry.getKey()).matcher(expression).matches())
-                .map(Map.Entry::getValue)
-                .findFirst();
     }
 
     private static class DelegatingProtocolHandler implements ProtocolHandler {
         private final Function<InputStream, String> handler;
+        private final Monitor m;
 
-        DelegatingProtocolHandler(Function<InputStream, String> handler) {
+        DelegatingProtocolHandler(Function<InputStream, String> handler, Monitor monitor) {
             this.handler = requireNonNull(handler);
+            m = monitor;
         }
 
         @Override
         public HandlerResponse apply(Map<String, List<String>> headers, InputStream body) {
-            return new HandlerResponse(200, handler.apply(body));
+            try {
+                return new HandlerResponse(200, handler.apply(body));
+            } catch (Throwable e) {
+                m.debug(format("Error processing message %s", e.getMessage()));
+                return new HandlerResponse(400, e.getMessage());
+            }
         }
     }
 }

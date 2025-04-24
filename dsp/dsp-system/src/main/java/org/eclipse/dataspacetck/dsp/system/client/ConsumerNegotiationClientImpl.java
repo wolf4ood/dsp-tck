@@ -39,7 +39,7 @@ public class ConsumerNegotiationClientImpl implements ConsumerNegotiationClient 
     private static final String GET_PATH = "%s/negotiations/%s";
 
     @DspTestingWorkaround("Should be %s/negotiations/%s/offers")
-    private static final String OFFERS_PATH = "%s/negotiations/%s/offer";
+    private static final String OFFERS_PATH = "%s/negotiations/%s/offers";
     private static final String AGREEMENTS_PATH = "%s/negotiations/%s/agreement";
     private static final String FINALIZE_PATH = "%s/negotiations/%s/events";
 

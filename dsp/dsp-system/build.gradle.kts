@@ -16,4 +16,7 @@
 dependencies {
     api(project(":dsp:dsp-api"))
     implementation(project(":core"))
+    implementation(libs.schema.validator) {
+        exclude("com.fasterxml.jackson.dataformat", "jackson-dataformat-yaml")
+    }
 }

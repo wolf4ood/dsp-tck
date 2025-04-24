@@ -15,6 +15,10 @@
 
 package org.eclipse.dataspacetck.dsp.system.pipeline;
 
+import com.networknt.schema.JsonSchemaFactory;
+import com.networknt.schema.SchemaLocation;
+import com.networknt.schema.ValidationMessage;
+import org.eclipse.dataspacetck.core.api.message.MessageValidator;
 import org.eclipse.dataspacetck.core.api.system.CallbackEndpoint;
 import org.eclipse.dataspacetck.core.spi.boot.Monitor;
 import org.eclipse.dataspacetck.dsp.system.api.connector.Connector;
@@ -27,9 +31,11 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
+import static com.networknt.schema.SpecVersion.VersionFlag.V202012;
 import static org.eclipse.dataspacetck.core.api.message.MessageSerializer.processJsonLd;
-import static org.eclipse.dataspacetck.core.api.message.MessageSerializer.serialize;
+import static org.eclipse.dataspacetck.core.api.message.MessageSerializer.serializePlainJson;
 import static org.eclipse.dataspacetck.dsp.system.api.message.DspConstants.DSPACE_NAMESPACE;
 import static org.eclipse.dataspacetck.dsp.system.api.message.DspConstants.DSPACE_PROPERTY_PROVIDER_PID_EXPANDED;
 import static org.eclipse.dataspacetck.dsp.system.api.message.DspConstants.DSPACE_PROPERTY_STATE_EXPANDED;
@@ -48,10 +54,16 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * Default implementation.
  */
 public class ProviderNegotiationPipelineImpl extends AbstractNegotiationPipeline<ProviderNegotiationPipeline> implements ProviderNegotiationPipeline {
+    protected static final String CLASSPATH_SCHEMA = "classpath:/";
     private static final String NEGOTIATIONS_OFFER_PATH = "/negotiations/[^/]+/offers/";
     private static final String NEGOTIATIONS_AGREEMENT_PATH = "/negotiations/[^/]+/agreement";
     private static final String NEGOTIATIONS_TERMINATION_PATH = "/negotiations/[^/]+/termination/";
     private static final String NEGOTIATION_EVENT_PATH = "/negotiations/[^/]+/events";
+
+    private final JsonSchemaFactory schemaFactory = JsonSchemaFactory.getInstance(V202012, builder ->
+            builder.schemaMappers(schemaMappers ->
+                    schemaMappers.mapPrefix(DSPACE_NAMESPACE + "/", CLASSPATH_SCHEMA))
+    );
 
     private Connector consumerConnector;
     private String providerConnectorId;
@@ -79,8 +91,8 @@ public class ProviderNegotiationPipelineImpl extends AbstractNegotiationPipeline
 
             monitor.debug("Sending contract request");
             var response = negotiationClient.contractRequest(contractRequest, providerConnectorId, false);
-            var correlationId = stringIdProperty(DSPACE_PROPERTY_PROVIDER_PID_EXPANDED, response); // FIXME https://github.com/eclipse-dataspacetck/cvf/issues/92
-            consumerConnector.getConsumerNegotiationManager().contractRequested(providerNegotiation.getId(), correlationId);
+            var correlationId = stringIdProperty(DSPACE_PROPERTY_PROVIDER_PID_EXPANDED, response);
+            consumerConnector.getConsumerNegotiationManager().contractRequested(providerNegotiation.getId(), (String) correlationId);
         });
         return this;
     }
@@ -165,12 +177,25 @@ public class ProviderNegotiationPipelineImpl extends AbstractNegotiationPipeline
         expectLatches.add(latch);
         stages.add(() ->
                 endpoint.registerHandler(NEGOTIATIONS_OFFER_PATH, offer -> {
-                    var negotiation = action.apply((processJsonLd(offer, createDspContext())));
+
+                    var negotiation = action.apply((processJsonLd(offer, createDspContext(), forSchema("/contract-offer-message-schema.json"))));
                     endpoint.deregisterHandler(NEGOTIATIONS_OFFER_PATH);
                     latch.countDown();
-                    return serialize(negotiation);
+                    return serializePlainJson(negotiation);
                 }));
         return this;
+    }
+
+    protected MessageValidator forSchema(String schema) {
+        return (input) -> {
+            var schemaValidator = schemaFactory.getSchema(SchemaLocation.of(DSPACE_NAMESPACE + schema));
+
+            var response = schemaValidator.validate(input);
+            if (response.isEmpty()) {
+                return MessageValidator.ValidationResult.valid();
+            }
+            return MessageValidator.ValidationResult.invalid("Invalid message: " + response.stream().map(ValidationMessage::getMessage).collect(Collectors.joining(",")));
+        };
     }
 
     public ProviderNegotiationPipeline expectAgreementMessage(Consumer<Map<String, Object>> action) {
@@ -182,7 +207,7 @@ public class ProviderNegotiationPipelineImpl extends AbstractNegotiationPipeline
     }
 
     public ProviderNegotiationPipeline expectTermination() {
-        return addHandlerAction(NEGOTIATIONS_TERMINATION_PATH, d -> providerNegotiation.transition(TERMINATED));
+        return addHandlerAction(NEGOTIATIONS_TERMINATION_PATH, forSchema("/contract-negotiation-event-message-schema.json"), d -> providerNegotiation.transition(TERMINATED));
     }
 
     @SuppressWarnings("unused")

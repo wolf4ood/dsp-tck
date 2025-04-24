@@ -83,7 +83,7 @@ public class ProviderNegotiationManagerImpl extends AbstractNegotiationManager i
     @Override
     public void handleAccepted(Map<String, Object> event) {
         var providerId = stringIdProperty(DSPACE_PROPERTY_PROVIDER_PID_EXPANDED, event); // // FIXME https://github.com/eclipse-dataspacetck/cvf/issues/92
-        stringProperty(DSPACE_PROPERTY_EVENT_TYPE_EXPANDED, event);
+        stringIdProperty(DSPACE_PROPERTY_EVENT_TYPE_EXPANDED, event);
         var negotiation = negotiations.get(providerId);
         negotiation.transition(ACCEPTED, n -> listeners.forEach(l -> l.agreed(negotiation)));
     }

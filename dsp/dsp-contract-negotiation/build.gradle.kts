@@ -1,5 +1,3 @@
-import org.eclipse.dataspacetck.gradle.plugins.tckgen.TckGeneratorExtension
-
 /*
  *  Copyright (c) 2023 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)
  *
@@ -28,5 +26,20 @@ dependencies {
 
 tasks.test {
     systemProperty("dataspacetck.launcher", "org.eclipse.dataspacetck.dsp.system.DspSystemLauncher")
-    systemProperty("dataspacetck.dsp.local.connector", "true")
+    systemProperty("dataspacetck.dsp.local.connector", "false")
+    systemProperty("dataspacetck.dsp.connector.http.url", "http://localhost:8282/api/dsp/one/2025-1/")
+    systemProperty(
+        "dataspacetck.dsp.connector.negotiation.initiate.url",
+        "http://localhost:8687/tck/negotiations/requests"
+    )
+    systemProperty("CN_01_01_DATASETID", "ACN0101")
+    systemProperty("CN_01_01_OFFERID", "CD123:ACN0101:456")
+    systemProperty("CN_01_02_DATASETID", "ACN0102")
+    systemProperty("CN_01_02_OFFERID", "CD123:ACN0102:456")
+    systemProperty("CN_01_03_DATASETID", "ACN0103")
+    systemProperty("CN_01_03_OFFERID", "CD123:ACN0103:456")
+    systemProperty("CN_01_04_DATASETID", "ACN0104")
+    systemProperty("CN_01_04_OFFERID", "CD123:ACN0104:456")
+    systemProperty("dataspacetck.dsp.connector.agent.id", "CONNECTOR_UNDER_TEST")
+    systemProperty("dataspacetck.debug", "true")
 }

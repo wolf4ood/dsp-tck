@@ -60,13 +60,12 @@ public class SystemBootstrapExtension implements BeforeAllCallback,
     private static final ExtensionContext.Namespace CALLBACK_NAMESPACE = org.junit.jupiter.api.extension.ExtensionContext.Namespace.create(new Object());
 
     private static boolean started;
-
-    private String callbackHost;
-    private int callbackPort;
     private static SystemLauncher launcher;
     private static DispatchingHandler dispatchingHandler;
     private static HttpServer server;
     private static ConsoleMonitor monitor;
+    private String callbackHost;
+    private int callbackPort;
     private ExecutorService executorService;
 
     @Override
@@ -191,6 +190,7 @@ public class SystemBootstrapExtension implements BeforeAllCallback,
         var endpointBuilder = DefaultCallbackEndpoint.Builder.newInstance();
         endpointBuilder.address(context.getConfigurationParameter(TCK_CALLBACK_ADDRESS)
                 .orElse(propertyOrEnv(TCK_CALLBACK_ADDRESS, TCK_DEFAULT_CALLBACK_ADDRESS)));
+        endpointBuilder.monitor(monitor);
         endpointBuilder.listener(dispatchingHandler::deregisterEndpoint);
 
         var endpoint = endpointBuilder.build();

@@ -31,7 +31,7 @@ import java.util.function.Consumer;
 
 import static java.util.UUID.randomUUID;
 import static org.eclipse.dataspacetck.core.api.message.MessageSerializer.processJsonLd;
-import static org.eclipse.dataspacetck.core.api.message.MessageSerializer.serialize;
+import static org.eclipse.dataspacetck.core.api.message.MessageSerializer.serializePlainJson;
 import static org.eclipse.dataspacetck.dsp.system.api.message.DspConstants.DSPACE_NAMESPACE;
 import static org.eclipse.dataspacetck.dsp.system.api.message.DspConstants.DSPACE_PROPERTY_STATE_EXPANDED;
 import static org.eclipse.dataspacetck.dsp.system.api.message.DspConstants.TCK_PARTICIPANT_ID;
@@ -146,7 +146,7 @@ public class ConsumerNegotiationPipelineImpl extends AbstractNegotiationPipeline
                     var negotiation = action.apply(expanded, consumerConnectorId);
                     endpoint.deregisterHandler(REQUEST_PATH);
                     latch.countDown();
-                    return serialize(processJsonLd(negotiation, createDspContext()));
+                    return serializePlainJson(negotiation);
                 }));
         return this;
     }

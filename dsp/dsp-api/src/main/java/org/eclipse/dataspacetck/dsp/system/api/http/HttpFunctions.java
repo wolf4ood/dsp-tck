@@ -47,7 +47,7 @@ public class HttpFunctions {
     }
 
     public static Response postJson(String url, Object message, boolean expectError) {
-        return postJson(url, message, expectError, false);
+        return postJson(url, message, expectError, true);
     }
 
     public static Response postJson(String url, Object message, boolean expectError, boolean plain) {
