@@ -19,7 +19,6 @@ import org.eclipse.dataspacetck.core.api.system.CallbackEndpoint;
 import org.eclipse.dataspacetck.core.api.system.HandlerResponse;
 import org.eclipse.dataspacetck.core.api.system.ProtocolHandler;
 import org.jetbrains.annotations.NotNull;
-import org.junit.jupiter.api.extension.ExtensionContext;
 
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -39,7 +38,7 @@ import static java.util.regex.Pattern.compile;
  * <p>
  * Deserialized messages from incoming transports such as HTTP are dispatched to a registered handler through this endpoint by calling {@link #apply(String, InputStream)}.
  */
-public class DefaultCallbackEndpoint implements CallbackEndpoint, BiFunction<String, InputStream, String>, ExtensionContext.Store.CloseableResource {
+public class DefaultCallbackEndpoint implements CallbackEndpoint, BiFunction<String, InputStream, String>, AutoCloseable {
 
     private final List<LifecycleListener> listeners = new ArrayList<>();
     private final Map<String, ProtocolHandler> handlers = new HashMap<>();
@@ -104,10 +103,10 @@ public class DefaultCallbackEndpoint implements CallbackEndpoint, BiFunction<Str
      */
     private Optional<ProtocolHandler> lookupHandler(String expression) {
         return handlers.entrySet()
-                .stream()
-                .filter(entry -> compile(entry.getKey()).matcher(expression).matches())
-                .map(Map.Entry::getValue)
-                .findFirst();
+                       .stream()
+                       .filter(entry -> compile(entry.getKey()).matcher(expression).matches())
+                       .map(Map.Entry::getValue)
+                       .findFirst();
     }
 
     @FunctionalInterface
