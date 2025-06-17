@@ -43,6 +43,7 @@ allprojects {
     apply(plugin = "maven-publish")
     apply(plugin = "signing")
     apply(plugin = "org.eclipse.dataspacetck.build.tck-build")
+    apply(plugin = "org.eclipse.dataspacetck.build.tck-generator")
 
     configure<TckBuildExtension> {
         pom {
