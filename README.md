@@ -334,3 +334,7 @@ By executing the following command, a test plan will be generated in the `build/
 ```bash
 /gradlew genTestPlan
 ```
+
+## 4. Filing Challenges
+
+If you believe there is a bug in the TCK or there is an invalid test assertion, please file a bug [here](https://github.com/eclipse-dataspacetck/dsp-tck/issues).
