@@ -100,8 +100,7 @@ public class ProviderNegotiationPipelineImpl extends AbstractNegotiationPipeline
                     offerId,
                     assigner,
                     TCK_PARTICIPANT_ID,
-                    targetId,
-                    endpoint.getAddress());
+                    targetId);
 
             monitor.debug("Sending counter offer: " + providerId);
             if (!expectError) {

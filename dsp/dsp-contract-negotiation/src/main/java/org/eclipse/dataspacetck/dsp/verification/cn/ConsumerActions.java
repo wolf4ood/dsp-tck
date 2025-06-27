@@ -81,7 +81,7 @@ public class ConsumerActions {
                 negotiation.getCorrelationId(),
                 negotiation.getOfferId(),
                 negotiation.getDatasetId(),
-                baseUrl);
+                null);
 
         negotiation.transition(REQUESTED);
         var url = format(REQUEST_OFFER_PATH, baseUrl, negotiation.getCorrelationId());
