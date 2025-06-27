@@ -116,7 +116,9 @@ public class NegotiationFunctions {
 
         message.put(DSPACE_PROPERTY_OFFER, offer);
 
-        message.put(DSPACE_PROPERTY_CALLBACK_ADDRESS, callbackAddress);
+        if (callbackAddress != null) {
+            message.put(DSPACE_PROPERTY_CALLBACK_ADDRESS, callbackAddress);
+        }
 
         return message;
     }
@@ -126,15 +128,13 @@ public class NegotiationFunctions {
                                                          String offerId,
                                                          String assigner,
                                                          String assignee,
-                                                         String targetId,
-                                                         String callbackAddress) {
+                                                         String targetId) {
         var message = createBaseMessage("ContractRequestMessage"); // do NOT override id
         message.put(CONTEXT, createDspContext());
         message.put(DSPACE_PROPERTY_PROVIDER_PID, providerId);
         message.put(DSPACE_PROPERTY_CONSUMER_PID, consumerId);
 
         message.put(DSPACE_PROPERTY_OFFER, createOfferPolicy(offerId, assigner, assignee, targetId));
-        message.put(DSPACE_PROPERTY_CALLBACK_ADDRESS, callbackAddress);
 
         return message;
     }
