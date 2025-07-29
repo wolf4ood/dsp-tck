@@ -69,6 +69,9 @@ The following configuration is required to run the Dataspace Protocol TCK agains
 |---------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------|
 | `dataspacetck.debug`                                    | Enables debug logging for the TCK.                                                                                                         | `true`                               |
 | `dataspacetck.local.connector`                          | Enable the embedded connector, useful for testing and debugging the DSP TCK. It should be disabled when running against a remote connector | `false`                              |
+| `dataspacetck.host`                                     | The hostname of the TCK server.                                                                                                            | `0.0.0.0`                            |
+| `dataspacetck.port`                                     | The port of the TCK server.                                                                                                                | `8083`                               |
+| `dataspacetck.callback.address`                         | The callback address of the TCK. Attached as `callbackAddress` in DSP messages when required to signal the response channel to the CUT     | `http://localhost:8083`              |
 | `dataspacetck.dsp.connector.agent.id`                   | The agent ID of the connector under test. This is used to identify the connector in the TCK tests.                                         | `urn:connector:example-connector`    |
 | `dataspacetck.dsp.connector.http.url`                   | The dataspace protocol URL of the connector under test. This is used to access the connector's endpoints during the TCK tests.             | `http://localhost:8080/dsp`          |
 | `dataspacetck.dsp.connector.http.base.url`              | The base URL of the connector under test. This is used to access the connector's metadata endpoint during the TCK tests.                   | `http://localhost:8080`              |
@@ -337,4 +340,5 @@ By executing the following command, a test plan will be generated in the `build/
 
 ## 4. Filing Challenges
 
-If you believe there is a bug in the TCK or there is an invalid test assertion, please file a bug [here](https://github.com/eclipse-dataspacetck/dsp-tck/issues).
+If you believe there is a bug in the TCK or there is an invalid test assertion, please file a
+bug [here](https://github.com/eclipse-dataspacetck/dsp-tck/issues).

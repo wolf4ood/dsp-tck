@@ -36,7 +36,6 @@ import org.junit.platform.commons.JUnitException;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.net.InetSocketAddress;
-import java.net.URI;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
@@ -45,7 +44,11 @@ import java.util.concurrent.Executors;
 import static java.lang.Boolean.parseBoolean;
 import static org.eclipse.dataspacetck.core.api.system.SystemsConstants.TCK_CALLBACK_ADDRESS;
 import static org.eclipse.dataspacetck.core.api.system.SystemsConstants.TCK_DEFAULT_CALLBACK_ADDRESS;
+import static org.eclipse.dataspacetck.core.api.system.SystemsConstants.TCK_DEFAULT_HOST;
+import static org.eclipse.dataspacetck.core.api.system.SystemsConstants.TCK_DEFAULT_PORT;
+import static org.eclipse.dataspacetck.core.api.system.SystemsConstants.TCK_HOST;
 import static org.eclipse.dataspacetck.core.api.system.SystemsConstants.TCK_LAUNCHER;
+import static org.eclipse.dataspacetck.core.api.system.SystemsConstants.TCK_PORT;
 import static org.eclipse.dataspacetck.core.system.ConfigFunctions.propertyOrEnv;
 import static org.eclipse.dataspacetck.core.system.ConsoleMonitor.ANSI_PROPERTY;
 import static org.eclipse.dataspacetck.core.system.ConsoleMonitor.DEBUG_PROPERTY;
@@ -80,10 +83,9 @@ public class SystemBootstrapExtension implements BeforeAllCallback,
 
         var ansi = parseBoolean(context.getConfigurationParameter(ANSI_PROPERTY).orElse(propertyOrEnv(ANSI_PROPERTY, "true")));
         var debug = parseBoolean(context.getConfigurationParameter(DEBUG_PROPERTY).orElse(propertyOrEnv(DEBUG_PROPERTY, "false")));
-        var callbackAddress = URI.create(context.getConfigurationParameter(TCK_CALLBACK_ADDRESS).orElse(propertyOrEnv(TCK_CALLBACK_ADDRESS, TCK_DEFAULT_CALLBACK_ADDRESS)));
 
-        this.callbackHost = callbackAddress.getHost();
-        this.callbackPort = callbackAddress.getPort();
+        this.callbackHost = context.getConfigurationParameter(TCK_HOST).orElse(TCK_DEFAULT_HOST);
+        this.callbackPort = context.getConfigurationParameter(TCK_PORT).map(Integer::parseInt).orElse(TCK_DEFAULT_PORT);
 
         monitor = new ConsoleMonitor(debug, ansi);
         var configuration = SystemConfiguration.Builder.newInstance()
